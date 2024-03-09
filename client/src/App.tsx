@@ -44,7 +44,7 @@ const App: React.FC = () => {
       setResult(data);
       setShowModal(true);
     } catch (error: any) {
-      alert(error.response.data.error);
+      alert(error);
       console.error('Error:', error);
     }
     setScanLoading(false)
