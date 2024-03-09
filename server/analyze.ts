@@ -8,9 +8,7 @@ const openai = new OpenAI({
     apiKey: process.env.OPENAI_API_KEY
 });
 
-const getCommits = async (owner: string, repo: string): Promise<any> => {
-    // This function will get the commits from the GitHub API
-    // and return them as a string
+const getCommits = async (owner: string, repo: string): Promise<any> => { // get all repo's commit
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits?per_page=100&page=1`;
     try {
         const res = await axios.get(apiUrl, {
@@ -30,7 +28,7 @@ const getCommits = async (owner: string, repo: string): Promise<any> => {
     }
 }
 
-const getCommitDiff = async (owner: string, repo: string, sha: string): Promise<string> => {
+const getCommitDiff = async (owner: string, repo: string, sha: string): Promise<string> => { // get commit's diff
     const apiUrl = `https://api.github.com/repos/${owner}/${repo}/commits/${sha}`;
     try {
         const res = await axios.get(apiUrl, {
@@ -52,8 +50,8 @@ const getCommitDiff = async (owner: string, repo: string, sha: string): Promise<
     }
 }
 
-export const analyzeCommitMsg = async (commitMessage: string, commitDiff: string): Promise<any> => {
-    const prompt = `以下のコミット文と変更内容を分析し、コミット文が変更内容に対して適切かどうかを判定してください。0か1で答えてください。理由はいらないです。
+export const analyzeCommitMsg = async (commitMessage: string, commitDiff: string): Promise<any> => { // analyze commit msg and diff to determine if it's good or bad
+    const prompt = `以下のコミット文と変更内容を分析し、コミット文が変更内容に対して適切かどうかを判定してください。0か1のみで答えてください。理由はいらないです。
     \n\nコミット文: ${commitMessage}\n\n変更内容:\n${commitDiff}
     `;
     console.log("prompt:" + prompt);
@@ -77,15 +75,14 @@ export const analyzeCommitMsg = async (commitMessage: string, commitDiff: string
     }
 }
 
-export const getBadCommitsNum = async (req: Request, res: Response) => {
-    console.log("started");
+export const getBadCommitsNum = async (req: Request, res: Response) => { // use thorse 3 functions to get bad commit number
     const owner = req.params.owner;
     const repo = req.params.repo;
 
     try {
         const commits: any = await getCommits(owner, repo);
         let badCommitNum = 0;
-        const commitsUrls: string[] = [];
+        const badCommitsDetail: any[] = [];
 
         for (const commit of commits) {
             const sha = commit.sha;
@@ -94,12 +91,12 @@ export const getBadCommitsNum = async (req: Request, res: Response) => {
 
             const analyzeResult = await analyzeCommitMsg(commitMessage, commitDiff);
             console.log("analyzeResult:" + Number(analyzeResult));
-            if (Number(analyzeResult) == 0) {
+            if (Number(analyzeResult) == 0) { // todo: fix: NaN problem
                 badCommitNum++;
-                commitsUrls.push(commit.html_url);
+                badCommitsDetail.push(commit);
             }
         }
-        res.json({ total: commits.length, badCommitNum, URL: commitsUrls });
+        res.json({ total: commits.length, badCommitNum, commitDetail: badCommitsDetail });
     } catch (error: any) {
         if (error.response) {
             return `${error.response.status}, ${error.response.data}`;
